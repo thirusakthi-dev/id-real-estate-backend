@@ -26,6 +26,13 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Real Estate API is running",
+  });
+});
+
 app.use("/api/users", UserRoutes);
 app.use("/api/properties", PropertyRoutes);
 app.use("/api/favorites", FavoriteRoutes);
