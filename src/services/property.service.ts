@@ -9,6 +9,8 @@ import {
 
 import { getPropertySort, PropertySort } from "../utils/property.sorting.js";
 
+import { createHttpError } from "../utils/http-error.js";
+
 interface CreatePropertyData {
   title: string;
   description?: string;
@@ -48,7 +50,7 @@ export async function createProperty(data: CreatePropertyData) {
       area: data.area,
       propertyType: data.propertyType,
       listingType: data.listingType,
-      images: data.images,
+      images: data.images ?? [],
       userId: data.userId,
     },
   });
@@ -136,11 +138,11 @@ export async function updateProperty(
   });
 
   if (!property) {
-    throw new Error("Property not found");
+    throw createHttpError("Property not found", 404);
   }
 
   if (property.userId !== userId) {
-    throw new Error("You are not allowed to update this property");
+    throw createHttpError("You are not allowed to update this property", 403);
   }
 
   return await prisma.property.update({
@@ -155,11 +157,11 @@ export async function deleteProperty(id: number, userId: number) {
   });
 
   if (!property) {
-    throw new Error("Property not found");
+    throw createHttpError("Property not found", 404);
   }
 
   if (property.userId !== userId) {
-    throw new Error("You are not allowed to delete this property");
+    throw createHttpError("You are not allowed to delete this property", 403);
   }
 
   return await prisma.property.delete({

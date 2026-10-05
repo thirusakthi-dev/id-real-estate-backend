@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 
+type HttpError = Error & {
+  statusCode?: number;
+};
+
 export function errorHandler(
   error: unknown,
   req: Request,
@@ -48,6 +52,15 @@ export function errorHandler(
 
   // Normal application error
   if (error instanceof Error) {
+    const httpError = error as HttpError;
+
+    if (httpError.statusCode) {
+      return res.status(httpError.statusCode).json({
+        success: false,
+        message: httpError.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: "Internal server error",

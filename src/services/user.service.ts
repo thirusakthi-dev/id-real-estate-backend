@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+
 import { prisma } from "../lib/prisma.js";
+import { createHttpError } from "../utils/http-error.js";
 
 interface CreateUserData {
   name: string;
@@ -11,14 +13,15 @@ interface CreateUserData {
 
 export async function createUser(data: CreateUserData) {
   const email = data.email.toLowerCase().trim();
+
   const existingUser = await prisma.user.findUnique({
     where: {
-      email: email,
+      email,
     },
   });
 
   if (existingUser) {
-    throw new Error("User with this email already exists");
+    throw createHttpError("User with this email already exists", 409);
   }
 
   const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -45,17 +48,19 @@ export async function createUser(data: CreateUserData) {
 
 export async function loginUser(email: string, password: string) {
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() },
+    where: {
+      email: email.toLowerCase().trim(),
+    },
   });
 
   if (!user) {
-    throw new Error("Invalid email or password");
+    throw createHttpError("Invalid email or password", 401);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
-    throw new Error("Invalid email or password");
+    throw createHttpError("Invalid email or password", 401);
   }
 
   const token = jwt.sign(
@@ -63,7 +68,9 @@ export async function loginUser(email: string, password: string) {
       userId: user.id,
     },
     process.env.JWT_SECRET!,
-    { expiresIn: "7d" },
+    {
+      expiresIn: "7d",
+    },
   );
 
   return {

@@ -35,7 +35,7 @@ export const createPropertySchema = z.object({
   listingType: z.enum(["SALE", "RENT"]),
 
   images: z
-    .array(z.string().url("Invalid image URL"))
+    .array(z.url("Invalid image URL"))
     .max(10, "Maximum 10 images allowed")
     .optional(),
 });

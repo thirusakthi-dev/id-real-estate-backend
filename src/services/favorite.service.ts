@@ -1,12 +1,15 @@
 import { prisma } from "../lib/prisma.js";
+import { createHttpError } from "../utils/http-error.js";
 
 export async function addFavorite(userId: number, propertyId: number) {
   const property = await prisma.property.findUnique({
-    where: { id: propertyId },
+    where: {
+      id: propertyId,
+    },
   });
 
   if (!property) {
-    throw new Error("Property not found");
+    throw createHttpError("Property not found", 404);
   }
 
   const existingFavorite = await prisma.favorite.findUnique({
@@ -19,7 +22,7 @@ export async function addFavorite(userId: number, propertyId: number) {
   });
 
   if (existingFavorite) {
-    throw new Error("Property already added to favorites");
+    throw createHttpError("Property already added to favorites", 409);
   }
 
   return await prisma.favorite.create({
@@ -41,7 +44,7 @@ export async function removeFavorite(userId: number, propertyId: number) {
   });
 
   if (!favorite) {
-    throw new Error("Property is not in your favorites");
+    throw createHttpError("Property is not in your favorites", 404);
   }
 
   return await prisma.favorite.delete({
