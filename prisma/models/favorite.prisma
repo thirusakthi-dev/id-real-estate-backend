@@ -1,0 +1,12 @@
+model Favorite{
+    id Int @default(autoincrement())
+    userId Int
+    propertyId Int
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+    createdAt  DateTime @default(now())
+
+    @@unique([userId, propertyId])
+
+}

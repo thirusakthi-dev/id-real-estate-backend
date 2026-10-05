@@ -1,0 +1,42 @@
+model Property {
+  id           Int          @id @default(autoincrement())
+  title        String
+  description  String?
+  price        Decimal      @db.Decimal(12, 2)
+  location     String
+  city         String
+  bedrooms     Int?
+  bathrooms    Int?
+  area         Int?
+  propertyType PropertyType
+  listingType  ListingType
+  images String[]
+  isAvailable  Boolean      @default(true)
+
+  userId    Int
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites  Favorite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city])
+  @@index([price])
+  @@index([propertyType])
+  @@index([listingType])
+  @@index([userId])
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  HOUSE
+  PLOT
+  OFFICE
+  SHOP
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
