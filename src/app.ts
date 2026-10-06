@@ -13,6 +13,7 @@ const allowedOrigins = process.env.FRONTEND_URLS?.split(",") || [];
 app.use(
   cors({
     origin: allowedOrigins,
+    credentials: true,
   }),
 );
 
