@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { authenticate } from "../middleware/auth";
+import { authenticate, authenticateMine } from "../middleware/auth";
 import { validate } from "../middleware/validate.middleware";
 
 import {
@@ -30,8 +30,12 @@ router.post(
   createPropertyController,
 );
 
-router.get("/", validateQuery(propertyQuerySchema), getPropertiesController);
-
+router.get(
+  "/",
+  authenticateMine,
+  validateQuery(propertyQuerySchema),
+  getPropertiesController,
+);
 router.get("/:id", getPropertyController);
 
 router.put(

@@ -43,3 +43,17 @@ export function authenticate(
     });
   }
 }
+
+export function authenticateMine(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  const mine = String(req.query.mine) === "true";
+
+  if (!mine) {
+    return next();
+  }
+
+  return authenticate(req, res, next);
+}
