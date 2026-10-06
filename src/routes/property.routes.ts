@@ -1,11 +1,14 @@
 import { Router } from "express";
+
 import { authenticate } from "../middleware/auth";
 import { validate } from "../middleware/validate.middleware";
+
 import {
   createPropertySchema,
   propertyQuerySchema,
   updatePropertySchema,
 } from "../validators/property.validator";
+
 import {
   createPropertyController,
   deletePropertyController,
@@ -13,9 +16,9 @@ import {
   getPropertyController,
   updatePropertyController,
 } from "../controllers/property.controller";
+
 import { validateQuery } from "../middleware/query.middleware";
 import { upload } from "../middleware/upload";
-validate;
 
 const router = Router();
 
