@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+
 import { z } from "zod";
 
 export const validateQuery = (schema: z.ZodType) => {

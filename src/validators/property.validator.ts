@@ -60,4 +60,6 @@ export const propertyQuerySchema = z.object({
   maxPrice: z.coerce.number().positive().optional(),
 
   sort: z.enum(["price_asc", "price_desc", "latest"]).optional(),
+
+  mine: z.coerce.boolean().default(false),
 });

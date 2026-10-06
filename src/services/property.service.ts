@@ -26,6 +26,20 @@ interface CreatePropertyData {
   userId: number;
 }
 
+interface UpdatePropertyData {
+  title?: string;
+  description?: string;
+  price?: number;
+  location?: string;
+  city?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
+  propertyType?: "APARTMENT" | "VILLA" | "HOUSE" | "PLOT" | "OFFICE" | "SHOP";
+  listingType?: "SALE" | "RENT";
+  images?: string[];
+}
+
 interface GetPropertiesOptions {
   page: number;
   limit: number;
@@ -35,6 +49,7 @@ interface GetPropertiesOptions {
   minPrice?: number;
   maxPrice?: number;
   sort?: PropertySort;
+  userId?: number;
 }
 
 export async function createProperty(data: CreatePropertyData) {
@@ -66,15 +81,24 @@ export async function getAllProperties(options: GetPropertiesOptions) {
     minPrice,
     maxPrice,
     sort,
+    userId,
   } = options;
 
-  const where = buildPropertyFilters({
+  const propertyFilters = buildPropertyFilters({
     city,
     propertyType,
     listingType,
     minPrice,
     maxPrice,
   });
+
+  const where = {
+    ...propertyFilters,
+
+    ...(userId !== undefined && {
+      userId,
+    }),
+  };
 
   const { skip, take } = getPagination({
     page,
@@ -89,6 +113,7 @@ export async function getAllProperties(options: GetPropertiesOptions) {
       skip,
       take,
       orderBy,
+
       include: {
         user: {
           select: {
@@ -116,6 +141,7 @@ export async function getPropertyById(id: number) {
     where: {
       id,
     },
+
     include: {
       user: {
         select: {
@@ -131,10 +157,12 @@ export async function getPropertyById(id: number) {
 export async function updateProperty(
   id: number,
   userId: number,
-  data: Partial<CreatePropertyData>,
+  data: UpdatePropertyData,
 ) {
   const property = await prisma.property.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!property) {
@@ -146,14 +174,18 @@ export async function updateProperty(
   }
 
   return await prisma.property.update({
-    where: { id },
+    where: {
+      id,
+    },
     data,
   });
 }
 
 export async function deleteProperty(id: number, userId: number) {
   const property = await prisma.property.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!property) {
@@ -165,6 +197,8 @@ export async function deleteProperty(id: number, userId: number) {
   }
 
   return await prisma.property.delete({
-    where: { id },
+    where: {
+      id,
+    },
   });
 }

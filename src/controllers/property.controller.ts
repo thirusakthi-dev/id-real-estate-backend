@@ -1,4 +1,5 @@
 import { Response, NextFunction } from "express";
+
 import {
   createProperty,
   deleteProperty,
@@ -6,7 +7,9 @@ import {
   getPropertyById,
   updateProperty,
 } from "../services/property.service.js";
+
 import { AuthRequest } from "../middleware/auth.js";
+
 import { uploadImage } from "../lib/cloudinary.js";
 
 async function uploadPropertyImages(
@@ -61,6 +64,15 @@ export async function getPropertiesController(
   next: NextFunction,
 ) {
   try {
+    const mine = String(req.query.mine) === "true";
+
+    if (mine && !req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     const result = await getAllProperties({
       page: Number(req.query.page) || 1,
 
@@ -77,6 +89,8 @@ export async function getPropertiesController(
       maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined,
 
       sort: req.query.sort as "price_asc" | "price_desc" | "latest" | undefined,
+
+      userId: mine ? req.userId : undefined,
     });
 
     return res.status(200).json({
@@ -144,24 +158,24 @@ export async function updatePropertyController(
       });
     }
 
-    const files = req.files as Express.Multer.File[];
+    const files = req.files as Express.Multer.File[] | undefined;
 
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "At least one image is required",
-      });
+    let imageUrls: string[] | undefined;
+
+    if (files && files.length > 0) {
+      imageUrls = await uploadPropertyImages(files);
     }
 
-    const imageUrls = await uploadPropertyImages(files);
-
     const property = await updateProperty(id, req.userId, {
-      images: imageUrls,
+      ...req.body,
+      ...(imageUrls && {
+        images: imageUrls,
+      }),
     });
 
     return res.status(200).json({
       success: true,
-      message: "Property images updated successfully",
+      message: "Property updated successfully",
       data: property,
     });
   } catch (error) {
