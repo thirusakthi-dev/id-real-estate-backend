@@ -43,6 +43,7 @@ interface UpdatePropertyData {
 interface GetPropertiesOptions {
   page: number;
   limit: number;
+  search?: string;
   city?: string;
   propertyType?: string;
   listingType?: string;
@@ -86,6 +87,7 @@ export async function getAllProperties(options: GetPropertiesOptions) {
   const {
     page,
     limit,
+    search,
     city,
     propertyType,
     listingType,
@@ -105,6 +107,13 @@ export async function getAllProperties(options: GetPropertiesOptions) {
 
   const where = {
     ...propertyFilters,
+
+    ...(search?.trim() && {
+      title: {
+        contains: search.trim(),
+        mode: "insensitive" as const,
+      },
+    }),
 
     ...(userId !== undefined && {
       userId,

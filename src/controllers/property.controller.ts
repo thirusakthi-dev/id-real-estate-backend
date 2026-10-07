@@ -73,20 +73,40 @@ export async function getPropertiesController(
       });
     }
 
+    const search =
+      typeof req.query.search === "string"
+        ? req.query.search.trim()
+        : undefined;
+
     const result = await getAllProperties({
       page: Number(req.query.page) || 1,
 
       limit: Number(req.query.limit) || 10,
 
-      city: req.query.city as string,
+      search,
 
-      propertyType: req.query.propertyType as string,
+      city:
+        typeof req.query.city === "string" ? req.query.city.trim() : undefined,
 
-      listingType: req.query.listingType as string,
+      propertyType:
+        typeof req.query.propertyType === "string"
+          ? req.query.propertyType
+          : undefined,
 
-      minPrice: req.query.minPrice ? Number(req.query.minPrice) : undefined,
+      listingType:
+        typeof req.query.listingType === "string"
+          ? req.query.listingType
+          : undefined,
 
-      maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined,
+      minPrice:
+        req.query.minPrice !== undefined
+          ? Number(req.query.minPrice)
+          : undefined,
+
+      maxPrice:
+        req.query.maxPrice !== undefined
+          ? Number(req.query.maxPrice)
+          : undefined,
 
       sort: req.query.sort as "price_asc" | "price_desc" | "latest" | undefined,
 
