@@ -158,19 +158,23 @@ export async function updatePropertyController(
       });
     }
 
-    const files = req.files as Express.Multer.File[] | undefined;
+    const files = (req.files as Express.Multer.File[]) ?? [];
 
-    let imageUrls: string[] | undefined;
+    const existingImages = Array.isArray(req.body.existingImages)
+      ? req.body.existingImages
+      : req.body.existingImages
+        ? [req.body.existingImages]
+        : [];
 
-    if (files && files.length > 0) {
-      imageUrls = await uploadPropertyImages(files);
-    }
+    const uploadedImages =
+      files.length > 0 ? await uploadPropertyImages(files) : [];
+
+    // Keep existing images + add new images
+    const images = [...existingImages, ...uploadedImages];
 
     const property = await updateProperty(id, req.userId, {
       ...req.body,
-      ...(imageUrls && {
-        images: imageUrls,
-      }),
+      images,
     });
 
     return res.status(200).json({
