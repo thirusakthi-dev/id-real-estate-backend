@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { createUser, loginUser } from "../services/user.service.js";
-import { success } from "zod";
+
+import { createUser, loginUser, updateUser } from "../services/user.service.js";
+import { AuthRequest } from "../middleware/auth.js";
 
 export async function registerUser(
   req: Request,
@@ -28,6 +29,31 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       success: true,
       message: "Login Successfully!",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfile(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const user = await updateUser(req.userId, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
     });
   } catch (error) {
     next(error);
