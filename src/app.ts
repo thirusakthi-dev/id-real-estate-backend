@@ -4,6 +4,7 @@ import cors from "cors";
 import UserRoutes from "./routes/user.routes.js";
 import PropertyRoutes from "./routes/property.routes.js";
 import FavoriteRoutes from "./routes/favorite.routes.js";
+import SeedRoutes from "./routes/seed.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 
 const app: Application = express();
@@ -37,6 +38,7 @@ app.get("/", (req, res) => {
 app.use("/api/users", UserRoutes);
 app.use("/api/properties", PropertyRoutes);
 app.use("/api/favorites", FavoriteRoutes);
+app.use("/api/admin/seed", SeedRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
