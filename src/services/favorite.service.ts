@@ -63,7 +63,22 @@ export async function getUserFavorites(userId: number) {
       userId,
     },
     include: {
-      property: true,
+      property: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              whatsapp: true,
+              instagram: true,
+              facebook: true,
+              linkedin: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
