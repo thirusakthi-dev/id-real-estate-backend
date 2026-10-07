@@ -110,7 +110,7 @@ export async function getAllProperties(options: GetPropertiesOptions) {
 
     ...(search?.trim() && {
       title: {
-        startsWith: search.trim(),
+        contains: search.trim(),
         mode: "insensitive" as const,
       },
     }),
