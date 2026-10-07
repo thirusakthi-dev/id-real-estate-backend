@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { PrismaClient, PropertyType, ListingType } from "@prisma/client";
+
+import { prisma } from "../lib/prisma.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -16,18 +16,11 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    // --------------------------------------------------
     // WARNING:
-    // This removes existing users, properties and favorites.
-    // --------------------------------------------------
-
+    // This deletes all existing favorites, properties and users.
     await prisma.favorite.deleteMany();
     await prisma.property.deleteMany();
     await prisma.user.deleteMany();
-
-    // --------------------------------------------------
-    // USERS
-    // --------------------------------------------------
 
     const usersData = [
       {
@@ -94,10 +87,6 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 
     const users = [];
 
-    // --------------------------------------------------
-    // CREATE USERS
-    // --------------------------------------------------
-
     for (const userData of usersData) {
       const hashedPassword = await bcrypt.hash(userData.password, 10);
 
@@ -117,20 +106,19 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       });
 
       users.push({
-        ...user,
-        plainPassword: userData.password,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        password: userData.password,
+        city: user.city,
       });
     }
-
-    // --------------------------------------------------
-    // PROPERTY TEMPLATES
-    // --------------------------------------------------
 
     const propertyTemplates = [
       {
         title: "Modern 3 BHK Apartment",
-        propertyType: PropertyType.APARTMENT,
-        listingType: ListingType.SALE,
+        propertyType: "APARTMENT",
+        listingType: "SALE",
         price: 8500000,
         bedrooms: 3,
         bathrooms: 3,
@@ -138,8 +126,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Premium 2 BHK Apartment",
-        propertyType: PropertyType.APARTMENT,
-        listingType: ListingType.SALE,
+        propertyType: "APARTMENT",
+        listingType: "SALE",
         price: 6200000,
         bedrooms: 2,
         bathrooms: 2,
@@ -147,8 +135,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Luxury Family Villa",
-        propertyType: PropertyType.VILLA,
-        listingType: ListingType.SALE,
+        propertyType: "VILLA",
+        listingType: "SALE",
         price: 14500000,
         bedrooms: 4,
         bathrooms: 4,
@@ -156,8 +144,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Spacious Independent House",
-        propertyType: PropertyType.HOUSE,
-        listingType: ListingType.SALE,
+        propertyType: "HOUSE",
+        listingType: "SALE",
         price: 9800000,
         bedrooms: 3,
         bathrooms: 3,
@@ -165,8 +153,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Residential Plot",
-        propertyType: PropertyType.PLOT,
-        listingType: ListingType.SALE,
+        propertyType: "PLOT",
+        listingType: "SALE",
         price: 5500000,
         bedrooms: null,
         bathrooms: null,
@@ -174,8 +162,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Furnished 2 BHK for Rent",
-        propertyType: PropertyType.APARTMENT,
-        listingType: ListingType.RENT,
+        propertyType: "APARTMENT",
+        listingType: "RENT",
         price: 28000,
         bedrooms: 2,
         bathrooms: 2,
@@ -183,8 +171,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Commercial Office Space",
-        propertyType: PropertyType.OFFICE,
-        listingType: ListingType.RENT,
+        propertyType: "OFFICE",
+        listingType: "RENT",
         price: 65000,
         bedrooms: null,
         bathrooms: null,
@@ -192,8 +180,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Prime Retail Shop",
-        propertyType: PropertyType.SHOP,
-        listingType: ListingType.RENT,
+        propertyType: "SHOP",
+        listingType: "RENT",
         price: 45000,
         bedrooms: null,
         bathrooms: null,
@@ -201,8 +189,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Elegant 4 BHK Villa",
-        propertyType: PropertyType.VILLA,
-        listingType: ListingType.SALE,
+        propertyType: "VILLA",
+        listingType: "SALE",
         price: 18500000,
         bedrooms: 4,
         bathrooms: 4,
@@ -210,8 +198,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
       {
         title: "Contemporary 3 BHK House",
-        propertyType: PropertyType.HOUSE,
-        listingType: ListingType.SALE,
+        propertyType: "HOUSE",
+        listingType: "SALE",
         price: 11200000,
         bedrooms: 3,
         bathrooms: 3,
@@ -219,15 +207,9 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
     ];
 
-    // --------------------------------------------------
-    // CREATE PROPERTIES
-    // --------------------------------------------------
-
     const createdProperties = [];
 
     for (const user of users) {
-      // User.city is nullable in Prisma.
-      // Property.city is required.
       const city = user.city ?? "Chennai";
 
       for (const template of propertyTemplates) {
@@ -250,12 +232,16 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 
             area: template.area,
 
-            propertyType: template.propertyType,
+            propertyType: template.propertyType as
+              | "APARTMENT"
+              | "VILLA"
+              | "HOUSE"
+              | "PLOT"
+              | "OFFICE"
+              | "SHOP",
 
-            listingType: template.listingType,
+            listingType: template.listingType as "SALE" | "RENT",
 
-            // Images will be uploaded later
-            // through your Edit Property page.
             images: [],
 
             isAvailable: true,
@@ -267,20 +253,6 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
         createdProperties.push(property);
       }
     }
-
-    // --------------------------------------------------
-    // CREATE FAVORITES
-    // --------------------------------------------------
-    //
-    // Arun   → Priya's 5 properties
-    // Priya  → Rahul's 5 properties
-    // Rahul  → Sneha's 5 properties
-    // Sneha  → Vikram's 5 properties
-    // Vikram → Arun's 5 properties
-    //
-    // Total:
-    // 5 users × 5 favorites = 25 favorites
-    // --------------------------------------------------
 
     for (let userIndex = 0; userIndex < users.length; userIndex++) {
       const targetUserIndex = (userIndex + 1) % users.length;
@@ -301,23 +273,17 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       }
     }
 
-    // --------------------------------------------------
-    // RESPONSE
-    // --------------------------------------------------
-
     return res.status(201).json({
       success: true,
       message: "Database seeded successfully",
-
       data: {
         users: users.length,
         properties: createdProperties.length,
         favorites: users.length * 5,
-
         credentials: users.map((user) => ({
           name: user.name,
           email: user.email,
-          password: user.plainPassword,
+          password: user.password,
         })),
       },
     });
