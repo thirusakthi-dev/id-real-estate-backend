@@ -52,6 +52,17 @@ interface GetPropertiesOptions {
   userId?: number;
 }
 
+const propertyOwnerSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  whatsapp: true,
+  instagram: true,
+  facebook: true,
+  linkedin: true,
+};
+
 export async function createProperty(data: CreatePropertyData) {
   return await prisma.property.create({
     data: {
@@ -116,11 +127,7 @@ export async function getAllProperties(options: GetPropertiesOptions) {
 
       include: {
         user: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-          },
+          select: propertyOwnerSelect,
         },
       },
     }),
@@ -144,11 +151,7 @@ export async function getPropertyById(id: number) {
 
     include: {
       user: {
-        select: {
-          id: true,
-          name: true,
-          phone: true,
-        },
+        select: propertyOwnerSelect,
       },
     },
   });
