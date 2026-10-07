@@ -160,21 +160,15 @@ export async function updatePropertyController(
 
     const files = (req.files as Express.Multer.File[]) ?? [];
 
-    const existingImages = Array.isArray(req.body.existingImages)
-      ? req.body.existingImages
-      : req.body.existingImages
-        ? [req.body.existingImages]
-        : [];
-
+    // Only upload newly added images.
     const uploadedImages =
       files.length > 0 ? await uploadPropertyImages(files) : [];
 
-    // Keep existing images + add new images
-    const images = [...existingImages, ...uploadedImages];
-
     const property = await updateProperty(id, req.userId, {
       ...req.body,
-      images,
+
+      // Only new images are passed to the service.
+      newImages: uploadedImages,
     });
 
     return res.status(200).json({

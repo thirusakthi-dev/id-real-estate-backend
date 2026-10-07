@@ -37,7 +37,7 @@ interface UpdatePropertyData {
   area?: number;
   propertyType?: "APARTMENT" | "VILLA" | "HOUSE" | "PLOT" | "OFFICE" | "SHOP";
   listingType?: "SALE" | "RENT";
-  images?: string[];
+  newImages?: string[];
 }
 
 interface GetPropertiesOptions {
@@ -173,11 +173,18 @@ export async function updateProperty(
     throw createHttpError("You are not allowed to update this property", 403);
   }
 
+  const { newImages, ...propertyData } = data;
+
+  const images = [...(property.images ?? []), ...(newImages ?? [])];
+
   return await prisma.property.update({
     where: {
       id,
     },
-    data,
+    data: {
+      ...propertyData,
+      images,
+    },
   });
 }
 
