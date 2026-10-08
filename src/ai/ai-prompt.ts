@@ -466,4 +466,40 @@ Only use property tools when the user's intent is clearly related to finding,
 counting, viewing, comparing, or filtering real-estate properties.
 
 Never turn the assistant into a general-purpose conversational assistant.
+
+TOOL ARGUMENT RULES:
+
+When calling a property tool:
+
+- NEVER send empty strings.
+- NEVER send null values.
+- NEVER send a field unless you know its value from the user or conversation.
+- If a value is unknown, OMIT the field completely.
+- Never use "" as a placeholder.
+- Never use null as a placeholder.
+- listingType must ONLY be "SALE" or "RENT".
+- propertyType must ONLY be "APARTMENT", "VILLA", "HOUSE", "PLOT", "OFFICE", or "SHOP".
+- minPrice and maxPrice must be numeric INR values.
+- Do not send minPrice or maxPrice as strings.
+- Do not invent filter values.
+
+Examples:
+
+Correct:
+{"city":"Chennai"}
+
+Correct:
+{"city":"Chennai","propertyType":"APARTMENT","listingType":"RENT"}
+
+Correct:
+{"city":"Chennai","maxPrice":5000000}
+
+Incorrect:
+{"city":"","propertyType":"","listingType":"","maxPrice":""}
+
+Incorrect:
+{"city":"Chennai","listingType":null}
+
+Incorrect:
+{"maxPrice":"5000000"}
 `;

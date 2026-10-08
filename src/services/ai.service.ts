@@ -10,6 +10,8 @@ import {
   getProperty,
 } from "../ai/ai-properties.js";
 
+import { sanitizeAiFilters } from "../ai/ai-sanitize.js";
+
 import type {
   AiChatMessage,
   AiPropertyFilters,
@@ -49,9 +51,7 @@ export const generateAiResponse = async (
     ];
 
     console.log("================================");
-
     console.log("AI REQUEST:", userMessage);
-
     console.log("================================");
 
     /* ---------------------------------------------------------------------- */
@@ -79,7 +79,6 @@ export const generateAiResponse = async (
     if (!assistantMessage) {
       return {
         type: "text",
-
         message: "I couldn't generate a response. Please try again.",
       };
     }
@@ -94,7 +93,6 @@ export const generateAiResponse = async (
     ) {
       return {
         type: "text",
-
         message:
           assistantMessage.content?.trim() ||
           "How can I help you find a property?",
@@ -112,21 +110,35 @@ export const generateAiResponse = async (
     let functionArguments: Record<string, unknown> = {};
 
     try {
-      functionArguments = JSON.parse(toolCall.function.arguments || "{}");
+      const parsedArguments = JSON.parse(toolCall.function.arguments || "{}");
+
+      if (
+        !parsedArguments ||
+        typeof parsedArguments !== "object" ||
+        Array.isArray(parsedArguments)
+      ) {
+        console.error("Invalid AI tool arguments:", parsedArguments);
+
+        return {
+          type: "text",
+          message:
+            "I couldn't understand the property requirements. Please try again.",
+        };
+      }
+
+      functionArguments = parsedArguments as Record<string, unknown>;
     } catch {
       console.error("Invalid tool arguments:", toolCall.function.arguments);
 
       return {
         type: "text",
-
         message:
           "I couldn't understand the property requirements. Please try again.",
       };
     }
 
     console.log("AI FUNCTION:", functionName);
-
-    console.log("AI FUNCTION ARGS:", functionArguments);
+    console.log("AI RAW FUNCTION ARGS:", functionArguments);
 
     /* ---------------------------------------------------------------------- */
     /* Execute tool                                                           */
@@ -134,21 +146,26 @@ export const generateAiResponse = async (
 
     let toolResult: unknown;
 
+    let sanitizedFilters: AiPropertyFilters | undefined;
+
     if (functionName === "countProperties") {
-      const filters = functionArguments as AiPropertyFilters;
+      sanitizedFilters = sanitizeAiFilters(functionArguments);
 
-      toolResult = await countProperties(filters);
+      console.log("AI SANITIZED FILTERS:", sanitizedFilters);
+
+      toolResult = await countProperties(sanitizedFilters);
     } else if (functionName === "searchProperties") {
-      const filters = functionArguments as AiPropertyFilters;
+      sanitizedFilters = sanitizeAiFilters(functionArguments);
 
-      toolResult = await searchProperties(filters);
+      console.log("AI SANITIZED FILTERS:", sanitizedFilters);
+
+      toolResult = await searchProperties(sanitizedFilters);
     } else if (functionName === "getProperty") {
       const propertyId = Number(functionArguments.id);
 
       if (!Number.isInteger(propertyId) || propertyId <= 0) {
         return {
           type: "text",
-
           message: "I couldn't identify that property.",
         };
       }
@@ -159,7 +176,6 @@ export const generateAiResponse = async (
 
       return {
         type: "text",
-
         message: "I couldn't process that property request.",
       };
     }
@@ -217,7 +233,7 @@ export const generateAiResponse = async (
 
         count: result.count,
 
-        filters: result.filters,
+        filters: sanitizedFilters ?? result.filters,
       };
     }
 
@@ -235,7 +251,7 @@ export const generateAiResponse = async (
 
         properties: result,
 
-        filters: functionArguments as AiPropertyFilters,
+        filters: sanitizedFilters ?? {},
       };
     }
 

@@ -13,15 +13,29 @@ export const countProperties = async (filters: AiPropertyFilters) => {
 
   const where = buildPropertyFilters(propertyFilters);
 
-  const count = await prisma.property.count({
+  const totalProperties = await prisma.property.count();
+
+  const matchingProperties = await prisma.property.count({
     where: {
       ...where,
       isAvailable: true,
     },
   });
 
+  console.log("================================");
+
+  console.log("AI COUNT FILTERS:", filters);
+
+  console.log("PRISMA WHERE:", where);
+
+  console.log("TOTAL PROPERTIES:", totalProperties);
+
+  console.log("AVAILABLE MATCHING PROPERTIES:", matchingProperties);
+
+  console.log("================================");
+
   return {
-    count,
+    count: matchingProperties,
     filters,
   };
 };
