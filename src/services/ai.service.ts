@@ -25,19 +25,11 @@ Rules:
 - Use the available tools when real database information is required.
 - Only use information returned by the tools.
 - Keep responses concise and helpful.
-- Do not repeat large property details in your message because the frontend
-  will display structured property cards.
+- Do not repeat large property details because the frontend displays structured property cards.
 - Use conversation history to understand follow-up questions.
-- When the user says things like "what about villas", "under 50 lakhs",
-  "in that area", or similar follow-ups, use the previous conversation
-  to understand the missing context.
 `;
 
 const CHAT_HISTORY_LIMIT = 10;
-
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
 
 type AiChatMessage = {
   role: "user" | "assistant";
@@ -90,9 +82,9 @@ export type AiResponse =
       property: PropertyDetails | null;
     };
 
-// ─────────────────────────────────────────────
-// Count Properties
-// ─────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* Database helpers                                                           */
+/* -------------------------------------------------------------------------- */
 
 const countProperties = async (filters: PropertyFilters) => {
   const where = buildPropertyFilters(filters);
@@ -109,10 +101,6 @@ const countProperties = async (filters: PropertyFilters) => {
     filters,
   };
 };
-
-// ─────────────────────────────────────────────
-// Search Properties
-// ─────────────────────────────────────────────
 
 const searchProperties = async (
   filters: PropertyFilters,
@@ -152,10 +140,6 @@ const searchProperties = async (
     price: Number(property.price),
   }));
 };
-
-// ─────────────────────────────────────────────
-// Get Property
-// ─────────────────────────────────────────────
 
 const getProperty = async (id: number): Promise<PropertyDetails | null> => {
   const property = await prisma.property.findFirst({
@@ -198,9 +182,9 @@ const getProperty = async (id: number): Promise<PropertyDetails | null> => {
   };
 };
 
-// ─────────────────────────────────────────────
-// Count Properties Tool
-// ─────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* Gemini tools                                                               */
+/* -------------------------------------------------------------------------- */
 
 const countPropertiesTool = {
   name: "countProperties",
@@ -257,10 +241,6 @@ const countPropertiesTool = {
   },
 };
 
-// ─────────────────────────────────────────────
-// Search Properties Tool
-// ─────────────────────────────────────────────
-
 const searchPropertiesTool = {
   name: "searchProperties",
 
@@ -315,10 +295,6 @@ const searchPropertiesTool = {
   },
 };
 
-// ─────────────────────────────────────────────
-// Get Property Tool
-// ─────────────────────────────────────────────
-
 const getPropertyTool = {
   name: "getProperty",
 
@@ -339,9 +315,9 @@ const getPropertyTool = {
   },
 };
 
-// ─────────────────────────────────────────────
-// Generate Final AI Message
-// ─────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* Final Gemini response                                                      */
+/* -------------------------------------------------------------------------- */
 
 const generateFinalAiMessage = async (
   history: AiChatMessage[],
@@ -392,6 +368,8 @@ const generateFinalAiMessage = async (
     },
   ];
 
+  console.log("AI FINAL RESPONSE REQUEST");
+
   const response = await gemini.models.generateContent({
     model: "gemini-2.5-flash",
 
@@ -405,152 +383,170 @@ const generateFinalAiMessage = async (
   return response.text ?? "";
 };
 
-// ─────────────────────────────────────────────
-// Generate AI Response
-// ─────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* Main AI response                                                           */
+/* -------------------------------------------------------------------------- */
 
 export const generateAiResponse = async (
   userMessage: string,
   history: AiChatMessage[] = [],
 ): Promise<AiResponse> => {
-  const limitedHistory = history.slice(-CHAT_HISTORY_LIMIT);
+  try {
+    const limitedHistory = history.slice(-CHAT_HISTORY_LIMIT);
 
-  const contents = [
-    ...limitedHistory.map((item) => ({
-      role: item.role === "assistant" ? "model" : "user",
-      parts: [
+    const contents = [
+      ...limitedHistory.map((item) => ({
+        role: item.role === "assistant" ? "model" : "user",
+        parts: [
+          {
+            text: item.message,
+          },
+        ],
+      })),
+
+      {
+        role: "user",
+        parts: [
+          {
+            text: userMessage,
+          },
+        ],
+      },
+    ];
+
+    console.log("AI REQUEST:", userMessage);
+
+    const response = await gemini.models.generateContent({
+      model: "gemini-2.5-flash",
+
+      contents,
+
+      config: {
+        systemInstruction: AI_SYSTEM_INSTRUCTION,
+
+        tools: [
+          {
+            functionDeclarations: [
+              countPropertiesTool,
+              searchPropertiesTool,
+              getPropertyTool,
+            ],
+          },
+        ],
+      },
+    });
+
+    console.log("AI RESPONSE RECEIVED");
+
+    const functionCall = response.functionCalls?.[0];
+
+    /* ---------------------------------------------------------------------- */
+    /* Normal text response                                                   */
+    /* ---------------------------------------------------------------------- */
+
+    if (!functionCall) {
+      return {
+        type: "text",
+        message: response.text ?? "",
+      };
+    }
+
+    console.log("AI FUNCTION:", functionCall.name);
+    console.log("AI FUNCTION ARGS:", functionCall.args);
+
+    /* ---------------------------------------------------------------------- */
+    /* Count                                                                   */
+    /* ---------------------------------------------------------------------- */
+
+    if (functionCall.name === "countProperties") {
+      const filters = (functionCall.args ?? {}) as PropertyFilters;
+
+      const data = await countProperties(filters);
+
+      const aiMessage = await generateFinalAiMessage(
+        limitedHistory,
+        userMessage,
+        functionCall,
         {
-          text: item.message,
+          output: data,
         },
-      ],
-    })),
+      );
 
-    {
-      role: "user",
-      parts: [
+      return {
+        type: "count",
+        message: aiMessage,
+        count: data.count,
+        filters: data.filters,
+      };
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Search                                                                  */
+    /* ---------------------------------------------------------------------- */
+
+    if (functionCall.name === "searchProperties") {
+      const filters = (functionCall.args ?? {}) as PropertyFilters;
+
+      const properties = await searchProperties(filters);
+
+      const aiMessage = await generateFinalAiMessage(
+        limitedHistory,
+        userMessage,
+        functionCall,
         {
-          text: userMessage,
+          output: properties,
         },
-      ],
-    },
-  ];
+      );
 
-  const response = await gemini.models.generateContent({
-    model: "gemini-2.5-flash",
+      return {
+        type: "properties",
+        message: aiMessage,
+        properties,
+        filters,
+      };
+    }
 
-    contents,
+    /* ---------------------------------------------------------------------- */
+    /* Get property                                                            */
+    /* ---------------------------------------------------------------------- */
 
-    config: {
-      systemInstruction: AI_SYSTEM_INSTRUCTION,
+    if (functionCall.name === "getProperty") {
+      const propertyId = Number(functionCall.args?.id);
 
-      tools: [
+      if (!Number.isInteger(propertyId) || propertyId <= 0) {
+        return {
+          type: "text",
+          message: "I couldn't identify that property.",
+        };
+      }
+
+      const property = await getProperty(propertyId);
+
+      const aiMessage = await generateFinalAiMessage(
+        limitedHistory,
+        userMessage,
+        functionCall,
         {
-          functionDeclarations: [
-            countPropertiesTool,
-            searchPropertiesTool,
-            getPropertyTool,
-          ],
+          output: property,
         },
-      ],
-    },
-  });
+      );
 
-  const functionCall = response.functionCalls?.[0];
+      return {
+        type: "property",
+        message: aiMessage,
+        property,
+      };
+    }
 
-  // ─────────────────────────────────────────────
-  // Normal Chat
-  // ─────────────────────────────────────────────
-
-  if (!functionCall) {
     return {
       type: "text",
       message: response.text ?? "",
     };
+  } catch (error) {
+    console.error("========== AI SERVICE ERROR ==========");
+    console.error(error);
+    console.error("======================================");
+
+    throw error;
   }
-
-  // ─────────────────────────────────────────────
-  // Count Properties
-  // ─────────────────────────────────────────────
-
-  if (functionCall.name === "countProperties") {
-    const filters = (functionCall.args ?? {}) as PropertyFilters;
-
-    const data = await countProperties(filters);
-
-    const aiMessage = await generateFinalAiMessage(
-      limitedHistory,
-      userMessage,
-      functionCall,
-      {
-        output: data,
-      },
-    );
-
-    return {
-      type: "count",
-      message: aiMessage,
-      count: data.count,
-      filters: data.filters,
-    };
-  }
-
-  // ─────────────────────────────────────────────
-  // Search Properties
-  // ─────────────────────────────────────────────
-
-  if (functionCall.name === "searchProperties") {
-    const filters = (functionCall.args ?? {}) as PropertyFilters;
-
-    const properties = await searchProperties(filters);
-
-    const aiMessage = await generateFinalAiMessage(
-      limitedHistory,
-      userMessage,
-      functionCall,
-      {
-        output: properties,
-      },
-    );
-
-    return {
-      type: "properties",
-      message: aiMessage,
-      properties,
-      filters,
-    };
-  }
-
-  // ─────────────────────────────────────────────
-  // Get Property
-  // ─────────────────────────────────────────────
-
-  if (functionCall.name === "getProperty") {
-    const propertyId = Number(functionCall.args?.id);
-
-    const property = await getProperty(propertyId);
-
-    const aiMessage = await generateFinalAiMessage(
-      limitedHistory,
-      userMessage,
-      functionCall,
-      {
-        output: property,
-      },
-    );
-
-    return {
-      type: "property",
-      message: aiMessage,
-      property,
-    };
-  }
-
-  // ─────────────────────────────────────────────
-  // Unknown Tool
-  // ─────────────────────────────────────────────
-
-  return {
-    type: "text",
-    message: response.text ?? "",
-  };
 };
