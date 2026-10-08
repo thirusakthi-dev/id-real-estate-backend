@@ -2,6 +2,9 @@ import { Prisma } from "@prisma/client";
 
 export interface PropertyFilters {
   city?: string;
+  location?: string;
+  bedrooms?: number;
+  bathrooms?: number;
   propertyType?: string;
   listingType?: string;
   minPrice?: number;
@@ -11,7 +14,16 @@ export interface PropertyFilters {
 export function buildPropertyFilters(
   filters: PropertyFilters,
 ): Prisma.PropertyWhereInput {
-  const { city, propertyType, listingType, minPrice, maxPrice } = filters;
+  const {
+    city,
+    location,
+    bedrooms,
+    bathrooms,
+    propertyType,
+    listingType,
+    minPrice,
+    maxPrice,
+  } = filters;
 
   const where: Prisma.PropertyWhereInput = {};
 
@@ -20,6 +32,21 @@ export function buildPropertyFilters(
       contains: city,
       mode: "insensitive",
     };
+  }
+
+  if (location) {
+    where.location = {
+      contains: location,
+      mode: "insensitive",
+    };
+  }
+
+  if (bedrooms !== undefined) {
+    where.bedrooms = bedrooms;
+  }
+
+  if (bathrooms !== undefined) {
+    where.bathrooms = bathrooms;
   }
 
   if (propertyType) {
