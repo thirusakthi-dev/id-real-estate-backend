@@ -23,8 +23,13 @@ export const chatWithAi = async (req: Request, res: Response) => {
 
     return res.status(HTTP_STATUS.OK).json(response);
   } catch (error) {
-    console.error("AI CHAT ERROR:", error);
+    console.error("========== AI CHAT ERROR ==========");
+    console.error(error);
+    console.error("===================================");
 
-    throw error;
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown AI error",
+    });
   }
 };
