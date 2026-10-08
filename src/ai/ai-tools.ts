@@ -1,50 +1,50 @@
 const propertyFilterProperties = {
   city: {
     type: "string",
-    description: "City name.",
+    description: "City name. Only include when the user specifies a city.",
   },
 
   location: {
     type: "string",
-    description: "Specific area or locality.",
+    description:
+      "Specific area or locality. Only include when the user specifies an area.",
   },
 
   bedrooms: {
     type: "integer",
-    description: "Number of bedrooms.",
+    description:
+      "Number of bedrooms. Only include when the user specifies bedrooms.",
   },
 
   bathrooms: {
     type: "integer",
-    description: "Number of bathrooms.",
+    description:
+      "Number of bathrooms. Only include when the user specifies bathrooms.",
   },
 
   propertyType: {
     type: "string",
     enum: ["APARTMENT", "VILLA", "HOUSE", "PLOT", "OFFICE", "SHOP"],
-    description: "Type of property.",
+    description: "Property type. Only include when specified by the user.",
   },
 
   listingType: {
     type: "string",
     enum: ["SALE", "RENT"],
-    description: "Whether the property is for sale or rent.",
+    description:
+      "Whether the property is for sale or rent. Only include when specified by the user.",
   },
 
   minPrice: {
     type: "number",
-    description: "Minimum property price in INR.",
+    description:
+      "Minimum property price in INR. Only include when specified by the user.",
   },
 
   maxPrice: {
     type: "number",
-    description: "Maximum property price in INR.",
-  },
-
-  limit: {
-    type: "integer",
     description:
-      "Number of properties requested. Use the exact number requested by the user.",
+      "Maximum property price in INR. Only include when specified by the user.",
   },
 };
 
@@ -73,7 +73,7 @@ const searchPropertiesTool = {
     name: "searchProperties",
 
     description:
-      "Search available properties matching the user's requirements. Use this when the user wants to see property results.",
+      "Search available properties matching the user's requirements. Return matching properties from the database.",
 
     parameters: {
       type: "object",

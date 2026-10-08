@@ -29,14 +29,9 @@ export const countProperties = async (filters: AiPropertyFilters) => {
 export const searchProperties = async (
   filters: AiPropertyFilters,
 ): Promise<PropertyResult[]> => {
-  const { limit, ...propertyFilters } = filters;
+  const { limit: _limit, ...propertyFilters } = filters;
 
   const where = buildPropertyFilters(propertyFilters);
-
-  const resultLimit =
-    typeof limit === "number" && Number.isInteger(limit) && limit > 0
-      ? Math.min(limit, 20)
-      : 5;
 
   const properties = await prisma.property.findMany({
     where: {
@@ -63,7 +58,7 @@ export const searchProperties = async (
       createdAt: "desc",
     },
 
-    take: resultLimit,
+    take: 5,
   });
 
   return properties.map((property) => ({
