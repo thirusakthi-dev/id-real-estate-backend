@@ -5,9 +5,7 @@ export type AiChatMessage = {
   message: string;
 };
 
-export type AiPropertyFilters = PropertyFilters & {
-  limit?: number;
-};
+export type AiPropertyFilters = PropertyFilters;
 
 export type PropertyResult = {
   id: number;

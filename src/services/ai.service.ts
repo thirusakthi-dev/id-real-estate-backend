@@ -1,7 +1,6 @@
 import { groq } from "../lib/groq.js";
 
 import { AI_SYSTEM_INSTRUCTION } from "../ai/ai-prompt.js";
-
 import { aiTools } from "../ai/ai-tools.js";
 
 import {
@@ -21,6 +20,43 @@ import type {
 const MODEL = "openai/gpt-oss-20b";
 
 const CHAT_HISTORY_LIMIT = 10;
+
+const FINAL_RESPONSE_INSTRUCTION = `
+You are generating the final response for a real-estate application.
+
+Use ONLY the property data returned by the database tool.
+
+Never invent:
+- properties
+- property IDs
+- prices
+- locations
+- owners
+- availability
+- bedrooms
+- bathrooms
+- area
+- counts
+
+Do not add information that is not present in the tool result.
+
+Keep the response concise.
+
+Do not create Markdown tables.
+
+The frontend will render property cards separately.
+
+If properties were returned, briefly tell the user that matching properties
+were found.
+
+If no properties were returned, clearly say that no matching properties were
+found.
+
+If a count was returned, use exactly that count.
+
+Do not mention tools, databases, Prisma, Groq, APIs, function calls, or
+internal implementation.
+`;
 
 export const generateAiResponse = async (
   userMessage: string,
@@ -50,14 +86,6 @@ export const generateAiResponse = async (
       },
     ];
 
-    console.log("================================");
-    console.log("AI REQUEST:", userMessage);
-    console.log("================================");
-
-    /* ---------------------------------------------------------------------- */
-    /* First Groq request                                                     */
-    /* ---------------------------------------------------------------------- */
-
     const response = await groq.chat.completions.create({
       model: MODEL,
 
@@ -83,10 +111,10 @@ export const generateAiResponse = async (
       };
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Normal response                                                        */
-    /* ---------------------------------------------------------------------- */
-
+    /*
+     * No tool call means the AI is asking a clarification question,
+     * handling a greeting, or rejecting an unrelated request.
+     */
     if (
       !assistantMessage.tool_calls ||
       assistantMessage.tool_calls.length === 0
@@ -98,10 +126,6 @@ export const generateAiResponse = async (
           "How can I help you find a property?",
       };
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* Tool call                                                              */
-    /* ---------------------------------------------------------------------- */
 
     const toolCall = assistantMessage.tool_calls[0];
 
@@ -127,8 +151,8 @@ export const generateAiResponse = async (
       }
 
       functionArguments = parsedArguments as Record<string, unknown>;
-    } catch {
-      console.error("Invalid tool arguments:", toolCall.function.arguments);
+    } catch (error) {
+      console.error("Invalid AI tool arguments:", error);
 
       return {
         type: "text",
@@ -137,30 +161,30 @@ export const generateAiResponse = async (
       };
     }
 
-    console.log("AI FUNCTION:", functionName);
-    console.log("AI RAW FUNCTION ARGS:", functionArguments);
-
-    /* ---------------------------------------------------------------------- */
-    /* Execute tool                                                           */
-    /* ---------------------------------------------------------------------- */
-
     let toolResult: unknown;
 
     let sanitizedFilters: AiPropertyFilters | undefined;
 
+    /*
+     * COUNT PROPERTIES
+     */
     if (functionName === "countProperties") {
       sanitizedFilters = sanitizeAiFilters(functionArguments);
 
-      console.log("AI SANITIZED FILTERS:", sanitizedFilters);
-
       toolResult = await countProperties(sanitizedFilters);
     } else if (functionName === "searchProperties") {
-      sanitizedFilters = sanitizeAiFilters(functionArguments);
 
-      console.log("AI SANITIZED FILTERS:", sanitizedFilters);
+    /*
+     * SEARCH PROPERTIES
+     */
+      sanitizedFilters = sanitizeAiFilters(functionArguments);
 
       toolResult = await searchProperties(sanitizedFilters);
     } else if (functionName === "getProperty") {
+
+    /*
+     * GET PROPERTY
+     */
       const propertyId = Number(functionArguments.id);
 
       if (!Number.isInteger(propertyId) || propertyId <= 0) {
@@ -172,6 +196,10 @@ export const generateAiResponse = async (
 
       toolResult = await getProperty(propertyId);
     } else {
+
+    /*
+     * UNKNOWN TOOL
+     */
       console.error("Unknown AI function:", functionName);
 
       return {
@@ -180,74 +208,92 @@ export const generateAiResponse = async (
       };
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Tool result                                                            */
-    /* ---------------------------------------------------------------------- */
-
-    const finalMessages = [
-      ...messages,
-
-      assistantMessage,
-
-      {
-        role: "tool" as const,
-
-        tool_call_id: toolCall.id,
-
-        content: JSON.stringify(toolResult),
-      },
-    ];
-
-    /* ---------------------------------------------------------------------- */
-    /* Second Groq request                                                    */
-    /* ---------------------------------------------------------------------- */
-
-    const finalResponse = await groq.chat.completions.create({
-      model: MODEL,
-
-      messages: finalMessages,
-
-      temperature: 0.2,
-
-      max_completion_tokens: 500,
-    });
-
-    const finalMessage = finalResponse.choices[0]?.message?.content?.trim();
-
-    const message = finalMessage || "Here are the matching properties.";
-
-    /* ---------------------------------------------------------------------- */
-    /* Count response                                                         */
-    /* ---------------------------------------------------------------------- */
-
+    /*
+     * COUNT RESULT
+     *
+     * No need for another AI request when the answer is simply a count.
+     * This also guarantees that the count cannot be hallucinated.
+     */
     if (functionName === "countProperties") {
       const result = toolResult as {
         count: number;
         filters: AiPropertyFilters;
       };
 
+      let message: string;
+
+      if (result.count === 0) {
+        message = "I couldn't find any properties matching those requirements.";
+      } else {
+        message = `I found **${result.count}** matching ${
+          result.count === 1 ? "property" : "properties"
+        }.`;
+      }
+
       return {
         type: "count",
-
         message,
-
         count: result.count,
-
         filters: sanitizedFilters ?? result.filters,
       };
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Properties response                                                    */
-    /* ---------------------------------------------------------------------- */
-
+    /*
+     * SEARCH RESULT
+     */
     if (functionName === "searchProperties") {
       const result = toolResult as Awaited<ReturnType<typeof searchProperties>>;
+
+      if (result.length === 0) {
+        return {
+          type: "properties",
+          message:
+            "I couldn't find any properties matching those requirements.",
+          properties: [],
+          filters: sanitizedFilters ?? {},
+        };
+      }
+
+      /*
+       * Let Groq generate a short natural-language response,
+       * but give it ONLY the database result.
+       */
+      const finalMessages = [
+        {
+          role: "system" as const,
+          content: FINAL_RESPONSE_INSTRUCTION,
+        },
+
+        {
+          role: "user" as const,
+          content: JSON.stringify({
+            type: "properties",
+            filters: sanitizedFilters ?? {},
+            properties: result,
+          }),
+        },
+      ];
+
+      const finalResponse = await groq.chat.completions.create({
+        model: MODEL,
+
+        messages: finalMessages,
+
+        temperature: 0.1,
+
+        max_completion_tokens: 200,
+      });
+
+      const finalMessage = finalResponse.choices[0]?.message?.content?.trim();
 
       return {
         type: "properties",
 
-        message,
+        message:
+          finalMessage ||
+          `I found ${result.length} matching ${
+            result.length === 1 ? "property" : "properties"
+          }.`,
 
         properties: result,
 
@@ -255,32 +301,38 @@ export const generateAiResponse = async (
       };
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Single property response                                               */
-    /* ---------------------------------------------------------------------- */
-
+    /*
+     * SINGLE PROPERTY
+     */
     if (functionName === "getProperty") {
+      const property = toolResult as Awaited<ReturnType<typeof getProperty>>;
+
+      if (!property) {
+        return {
+          type: "property",
+          message: "I couldn't find that property.",
+          property: null,
+        };
+      }
+
       return {
         type: "property",
 
-        message,
+        message: "Here are the details of the property.",
 
-        property: toolResult as Awaited<ReturnType<typeof getProperty>>,
+        property,
       };
     }
 
     return {
       type: "text",
 
-      message,
+      message: "I couldn't process that property request.",
     };
   } catch (error) {
     console.error("======================================");
-
     console.error("AI SERVICE ERROR");
-
     console.error(error);
-
     console.error("======================================");
 
     throw error;

@@ -2,49 +2,49 @@ const propertyFilterProperties = {
   city: {
     type: "string",
     description:
-      "City name. Omit this field if the user did not provide a city. Never use null.",
+      "City name. Include only when the user explicitly provides a city. Never use an empty string or null.",
   },
 
   location: {
     type: "string",
     description:
-      "Specific locality or area. Omit this field if the user did not provide an area. Never use null.",
+      "Specific locality or area. Include only when the user explicitly provides an area. Never use an empty string or null.",
   },
 
   bedrooms: {
-    type: "string",
+    type: "integer",
     description:
-      "Number of bedrooms. Send as a string containing an integer, for example '2'. Omit if not specified.",
+      "Number of bedrooms. Include only when the user explicitly specifies bedrooms. Never use an empty string or null.",
   },
 
   bathrooms: {
-    type: "string",
+    type: "integer",
     description:
-      "Number of bathrooms. Send as a string containing an integer, for example '2'. Omit if not specified.",
+      "Number of bathrooms. Include only when the user explicitly specifies bathrooms. Never use an empty string or null.",
   },
 
   propertyType: {
     type: "string",
     description:
-      "Property type. Valid values are APARTMENT, VILLA, HOUSE, PLOT, OFFICE, SHOP. Omit if not specified.",
+      "Property type. Valid values are APARTMENT, VILLA, HOUSE, PLOT, OFFICE, SHOP. Include only when explicitly specified. Never use an empty string or null.",
   },
 
   listingType: {
     type: "string",
     description:
-      "Listing type. Valid values are SALE or RENT. Omit if not specified.",
+      "Listing type. Valid values are SALE or RENT. Include only when explicitly specified. Never use an empty string or null.",
   },
 
   minPrice: {
-    type: "string",
+    type: "number",
     description:
-      "Minimum price in INR. Send numeric INR value as a string, for example '5000000'. Omit if not specified.",
+      "Minimum property price in INR. Include only when the user specifies a minimum budget. Must be a numeric INR value. Never use an empty string or null.",
   },
 
   maxPrice: {
-    type: "string",
+    type: "number",
     description:
-      "Maximum price in INR. Send numeric INR value as a string, for example '5000000'. Omit if not specified.",
+      "Maximum property price in INR. Include only when the user specifies a maximum budget. Must be a numeric INR value. Never use an empty string or null.",
   },
 };
 
@@ -55,12 +55,14 @@ const countPropertiesTool = {
     name: "countProperties",
 
     description:
-      "Count available real-estate properties matching the user's requirements. Only include values explicitly known from the user or conversation. Never invent values.",
+      "Count available real-estate properties matching the user's requirements. Only include filter fields explicitly provided by the user or established in the conversation. Omit unknown fields completely.",
 
     parameters: {
       type: "object",
 
       properties: propertyFilterProperties,
+
+      required: [],
 
       additionalProperties: false,
     },
@@ -74,12 +76,14 @@ const searchPropertiesTool = {
     name: "searchProperties",
 
     description:
-      "Search available real-estate properties matching the user's requirements. Only include values explicitly known from the user or conversation. Never invent values.",
+      "Search available real-estate properties matching the user's requirements. Only include filter fields explicitly provided by the user or established in the conversation. Omit unknown fields completely.",
 
     parameters: {
       type: "object",
 
       properties: propertyFilterProperties,
+
+      required: [],
 
       additionalProperties: false,
     },
@@ -101,7 +105,7 @@ const getPropertyTool = {
       properties: {
         id: {
           type: "integer",
-          description: "The property ID.",
+          description: "The numeric property ID.",
         },
       },
 

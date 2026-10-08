@@ -28,8 +28,9 @@ export const chatWithAi = async (req: Request, res: Response) => {
     console.error("===================================");
 
     return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown AI error",
+      type: "text",
+      message:
+        "The property assistant is temporarily unavailable. Please try again shortly.",
     });
   }
 };

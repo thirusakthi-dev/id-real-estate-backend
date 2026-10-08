@@ -9,33 +9,17 @@ import type {
 } from "./ai-types.js";
 
 export const countProperties = async (filters: AiPropertyFilters) => {
-  const { limit: _limit, ...propertyFilters } = filters;
+  const where = buildPropertyFilters(filters);
 
-  const where = buildPropertyFilters(propertyFilters);
-
-  const totalProperties = await prisma.property.count();
-
-  const matchingProperties = await prisma.property.count({
+  const count = await prisma.property.count({
     where: {
       ...where,
       isAvailable: true,
     },
   });
 
-  console.log("================================");
-
-  console.log("AI COUNT FILTERS:", filters);
-
-  console.log("PRISMA WHERE:", where);
-
-  console.log("TOTAL PROPERTIES:", totalProperties);
-
-  console.log("AVAILABLE MATCHING PROPERTIES:", matchingProperties);
-
-  console.log("================================");
-
   return {
-    count: matchingProperties,
+    count,
     filters,
   };
 };
@@ -43,9 +27,7 @@ export const countProperties = async (filters: AiPropertyFilters) => {
 export const searchProperties = async (
   filters: AiPropertyFilters,
 ): Promise<PropertyResult[]> => {
-  const { limit: _limit, ...propertyFilters } = filters;
-
-  const where = buildPropertyFilters(propertyFilters);
+  const where = buildPropertyFilters(filters);
 
   const properties = await prisma.property.findMany({
     where: {
